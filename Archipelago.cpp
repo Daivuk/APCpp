@@ -59,6 +59,7 @@ void (*checklocfunc)(int64_t);
 void (*locinfofunc)(std::vector<AP_NetworkItem>) = nullptr;
 void (*recvdeath)() = nullptr;
 void (*setreplyfunc)(AP_SetReply) = nullptr;
+void (*locisprogfunc)(int64_t);
 
 // Serverdata Management
 std::map<std::string,AP_DataType> map_serverdata_typemanage;
@@ -322,6 +323,10 @@ void AP_SetLocationCheckedCallback(void (*f_loccheckrecv)(int64_t)) {
 
 void AP_SetLocationInfoCallback(void (*f_locinfrecv)(std::vector<AP_NetworkItem>)) {
     locinfofunc = f_locinfrecv;
+}
+
+void AP_SetLocationIsProgressionCallback(void (*f_locprog)(int64_t)) {
+    locisprogfunc = f_locprog;
 }
 
 void AP_SetDeathLinkRecvCallback(void (*f_deathrecv)()) {

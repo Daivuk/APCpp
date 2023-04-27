@@ -41,6 +41,8 @@ void AP_SetItemClearCallback(void (*f_itemclr)());
 void AP_SetItemRecvCallback(void (*f_itemrecv)(int64_t,bool));
 //Parameter Function must mark given location id as checked
 void AP_SetLocationCheckedCallback(void (*f_locrecv)(int64_t));
+//Parameter Function must mark given location id as checked
+void AP_SetLocationIsProgressionCallback(void (*f_locprog)(int64_t));
 
 /* Optional Callback Functions */
 
