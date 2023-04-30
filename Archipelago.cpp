@@ -542,7 +542,7 @@ bool parse_response(std::string msg, std::string &request) {
             for (unsigned int j = 0; j < root[i]["players"].size(); j++) {
                 map_player_id_alias.insert(std::pair<int,std::string>(root[i]["players"][j]["slot"].asInt(),root[i]["players"][j]["alias"].asString()));
             }
-            if (root[i]["slot_data"].get("DeathLink", false).asBool() && deathlinksupported) enable_deathlink = true;
+            if ((root[i]["slot_data"].get("death_link", false).asBool() || root[i]["slot_data"].get("DeathLink" /* Compatibility */, false).asBool()) && deathlinksupported) enable_deathlink = true;
             deathlink_amnesty = root[i]["slot_data"].get("DeathLink_Amnesty", 0).asInt();
             cur_deathlink_amnesty = deathlink_amnesty;
             for (std::string key : slotdata_strings) {
