@@ -147,11 +147,18 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
                     itr.second->status = AP_RequestStatus::Error;
                     map_server_data.erase(itr.first);
                 }
-                printf("AP: Error connecting to Archipelago. Retries: %d\n", msg->errorInfo.retries-1);
-                if (msg->errorInfo.retries-1 >= 2 && isSSL && !ssl_success) {
-                    printf("AP: SSL connection failed. Attempting unencrypted...\n");
-                    webSocket.setUrl("ws://" + ap_ip);
-                    isSSL = false;
+                if (msg->errorInfo.retries == 5) // That's enough failures...
+                {
+                    refused = true;
+                }
+                else
+                {
+                    printf("AP: Error connecting to Archipelago. Retries: %d\n", msg->errorInfo.retries-1);
+                    if (msg->errorInfo.retries-1 >= 2 && isSSL && !ssl_success) {
+                        printf("AP: SSL connection failed. Attempting unencrypted...\n");
+                        webSocket.setUrl("ws://" + ap_ip);
+                        isSSL = false;
+                    }
                 }
             }
         }
@@ -226,6 +233,43 @@ void AP_Start() {
         }
         parse_response(writer.write(fake_msg), req);
     }
+}
+
+void AP_Shutdown() {
+    init = false;
+    webSocket.stop();
+
+    // Reset all states
+    init = false;
+    auth = false;
+    refused = false;
+    multiworld = true;
+    isSSL = true;
+    ssl_success = false;
+    ap_player_id = 0;
+    ap_player_name.clear();
+    ap_ip.clear();
+    ap_game.clear();
+    ap_passwd.clear();
+    std::uint64_t ap_uuid = 0;
+    std::mt19937 rando;
+    client_version = {0,2,6};
+    deathlinkstat = false;
+    deathlinksupported = false;
+    enable_deathlink = false;
+    deathlink_amnesty = 0;
+    cur_deathlink_amnesty = 0;
+    while (AP_IsMessagePending()) AP_ClearLatestMessage();
+    queueitemrecvmsg = true;
+    map_location_id_name.clear();
+    map_item_id_name.clear();
+    map_serverdata_typemanage.clear();
+    int last_item_idx = 0;
+    map_server_data.clear(); // Does this leak?
+    map_slotdata_callback_int.clear();
+    map_slotdata_callback_raw.clear();
+    map_slotdata_callback_mapintint.clear();
+    slotdata_strings.clear();
 }
 
 bool AP_IsInit() {
