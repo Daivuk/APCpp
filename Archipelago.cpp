@@ -25,6 +25,7 @@ extern const int AP_OFFLINE_SLOT = 1404;
 constexpr int AP_OFFLINE_TEAM = 0;
 constexpr char const* AP_OFFLINE_NAME = "You";
 constexpr AP_NetworkVersion AP_DEFAULT_NETWORK_VERSION = {0,5,1}; // Default for compatibility reasons
+constexpr int AP_RETRY_COUNT = 5;
 
 //Setup Stuff
 bool init = false;
@@ -166,11 +167,18 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
                     itr.second->status = AP_RequestStatus::Error;
                     map_server_data.erase(itr.first);
                 }
-                printf("AP: Error connecting to Archipelago. Retries: %d\n", msg->errorInfo.retries-1);
-                if (msg->errorInfo.retries-1 >= 2 && isSSL && !ssl_success) {
-                    printf("AP: SSL connection failed. Attempting unencrypted...\n");
-                    webSocket.setUrl("ws://" + ap_ip);
-                    isSSL = false;
+                if (msg->errorInfo.retries >= AP_RETRY_COUNT)
+                {
+                    refused = true;
+                }
+                else
+                {
+                    printf("AP: Error connecting to Archipelago. Retries: %d\n", msg->errorInfo.retries-1);
+                    if (msg->errorInfo.retries-1 >= 2 && isSSL && !ssl_success) {
+                        printf("AP: SSL connection failed. Attempting unencrypted...\n");
+                        webSocket.setUrl("ws://" + ap_ip);
+                        isSSL = false;
+                    }
                 }
             }
         }
