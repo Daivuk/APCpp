@@ -127,6 +127,7 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
     //Connect to server
     ix::initNetSystem();
     webSocket.setUrl("wss://" + ap_ip);
+    webSocket.enablePerMessageDeflate();
     webSocket.setOnMessageCallback([](const ix::WebSocketMessagePtr& msg)
         {
             if (msg->type == ix::WebSocketMessageType::Message)
