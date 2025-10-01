@@ -279,11 +279,11 @@ void handleGiftAPISetReply(const AP_SetReply& reply) {
             AP_GiftBoxProperties local_box_props = getLocalGiftBoxProperties();
             std::vector<AP_Gift> giftsToReject;
             if (!local_box_props.IsOpen) {
-                for (const std::pair<std::string, AP_Gift>& gift : gifts)
+                for (const std::pair<const std::string, AP_Gift>& gift : gifts)
                     giftsToReject.push_back(gift.second);
             } else if (!local_box_props.AcceptsAnyGift) {
                 std::set<std::string> desired_traits(local_box_props.DesiredTraits.begin(), local_box_props.DesiredTraits.end());
-                for (const std::pair<std::string, AP_Gift>& gift : gifts) {
+                for (const std::pair<const std::string, AP_Gift>& gift : gifts) {
                     bool found = false;
                     for (const AP_GiftTrait& item_trait : gift.second.Traits) {
                         if (desired_traits.count(item_trait.Trait)) {
@@ -299,7 +299,7 @@ void handleGiftAPISetReply(const AP_SetReply& reply) {
             if (!giftsToReject.empty()){
                 rejectGiftsInternal(giftsToReject);
 
-                for (const AP_Gift gift : giftsToReject) {
+                for (const AP_Gift& gift : giftsToReject) {
                     gifts.erase(gift.ID);
                 }
             }
@@ -307,7 +307,7 @@ void handleGiftAPISetReply(const AP_SetReply& reply) {
 
         std::scoped_lock lock(cur_gifts_available_mutex);
         cur_gifts_available.clear();
-        for (const std::pair<std::string, AP_Gift>& gift : gifts) {
+        for (const std::pair<const std::string, AP_Gift>& gift : gifts) {
             cur_gifts_available.push_back(gift.second);
         }
     } else if (reply.key.rfind("GiftBoxes;", 0) == 0) {
