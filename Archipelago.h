@@ -90,6 +90,7 @@ bool AP_DeathLinkPending();
 void AP_DeathLinkClear();
 void AP_DeathLinkSend();
 void AP_DeathLinkSend(const std::string &cause);
+bool AP_DeathLinkEnabled();
 
 /* Message Management Types */
 

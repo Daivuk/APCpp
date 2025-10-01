@@ -492,6 +492,10 @@ void AP_DeathLinkClear() {
     deathlinkstat = false;
 }
 
+bool AP_DeathLinkEnabled() {
+    return enable_deathlink;
+}
+
 bool AP_IsMessagePending() {
     return !messageQueue.empty();
 }
