@@ -538,7 +538,7 @@ void AP_BulkSetServerData(AP_SetServerDataRequest* request) {
     req_t["key"] = request->key;
     switch (request->type) {
         case AP_DataType::Int:
-            for (int i = 0; i < request->operations.size(); i++) {
+            for (int i = 0; i < (int)request->operations.size(); i++) {
                 req_t["operations"][i]["operation"] = request->operations[i].operation;
                 req_t["operations"][i]["value"] = *((int*)request->operations[i].value);
             }
@@ -547,7 +547,7 @@ void AP_BulkSetServerData(AP_SetServerDataRequest* request) {
             }
             break;
         case AP_DataType::Double:
-            for (int i = 0; i < request->operations.size(); i++) {
+            for (int i = 0; i < (int)request->operations.size(); i++) {
                 req_t["operations"][i]["operation"] = request->operations[i].operation;
                 req_t["operations"][i]["value"] = *((double*)request->operations[i].value);
             }
@@ -556,7 +556,7 @@ void AP_BulkSetServerData(AP_SetServerDataRequest* request) {
             }
             break;
         default:
-            for (int i = 0; i < request->operations.size(); i++) {
+            for (int i = 0; i < (int)request->operations.size(); i++) {
                 req_t["operations"][i]["operation"] = request->operations[i].operation;
                 Json::Value data;
                 reader.parse((*(std::string*)request->operations[i].value), data);
@@ -681,7 +681,7 @@ void AP_SendBounce(AP_Bounce bounce) {
     // Add targets for bounce, if requested
     #define ADD_TARGETS( targets ) \
             if (bounce.targets != nullptr && !bounce.targets->empty()) { \
-                for (int i = 0; i < bounce.targets->size(); i++) { \
+                for (int i = 0; i < (int)bounce.targets->size(); i++) { \
                     req_t[0][#targets].append((*(bounce.targets))[i]); \
                 } \
             }
