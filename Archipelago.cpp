@@ -30,7 +30,7 @@ constexpr int AP_RETRY_COUNT = 5;
 //Setup Stuff
 bool init = false;
 bool auth = false;
-bool refused = false;
+AP_ErrorType refused = AP_ErrorType::None;
 bool multiworld = true;
 bool isSSL = true;
 bool ssl_success = false;
@@ -167,18 +167,19 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
                     itr.second->status = AP_RequestStatus::Error;
                     map_server_data.erase(itr.first);
                 }
+
                 if (msg->errorInfo.retries >= AP_RETRY_COUNT)
-                {
-                    refused = true;
-                }
+                    refused = AP_ErrorType::MaxRetriesExceeded;
+
+                if (msg->type == ix::WebSocketMessageType::Close)
+                    printf("AP: Connection to Archipelago closed.\n");
                 else
-                {
                     printf("AP: Error connecting to Archipelago. Retries: %d\n", msg->errorInfo.retries-1);
-                    if (msg->errorInfo.retries-1 >= 2 && isSSL && !ssl_success) {
-                        printf("AP: SSL connection failed. Attempting unencrypted...\n");
-                        webSocket.setUrl("ws://" + ap_ip);
-                        isSSL = false;
-                    }
+
+                if (msg->errorInfo.retries-1 >= 2 && isSSL && !ssl_success) {
+                    printf("AP: SSL connection failed. Attempting unencrypted...\n");
+                    webSocket.setUrl("ws://" + ap_ip);
+                    isSSL = false;
                 }
             }
         }
@@ -264,7 +265,7 @@ void AP_Shutdown() {
     // Reset all states
     init = false;
     auth = false;
-    refused = false;
+    refused = AP_ErrorType::None;
     multiworld = true;
     isSSL = true;
     ssl_success = false;
@@ -304,6 +305,10 @@ void AP_Shutdown() {
     slotdata_strings.clear();
     datapkg_cache = Json::objectValue;
     sp_ap_root = Json::objectValue;
+}
+
+AP_ErrorType AP_GetErrorType() {
+    return refused;
 }
 
 bool AP_IsInit() {
@@ -526,7 +531,7 @@ int AP_GetRoomInfo(AP_RoomInfo* client_roominfo) {
 
 AP_ConnectionStatus AP_GetConnectionStatus() {
     if (!multiworld && auth) return AP_ConnectionStatus::Authenticated;
-    if (refused) {
+    if (refused != AP_ErrorType::None) {
         return AP_ConnectionStatus::ConnectionRefused;
     }
     if (webSocket.getReadyState() == ix::ReadyState::Open) {
@@ -860,7 +865,7 @@ bool parse_response(std::string msg, std::string &request) {
 
                 auth = true;
                 ssl_success = auth && isSSL;
-                refused = false;
+                refused = AP_ErrorType::None;
             }
             request = writer.write(req_t);
             return true;
@@ -1039,8 +1044,20 @@ bool parse_response(std::string msg, std::string &request) {
                 map_players[itr["slot"].asInt()].alias = itr["alias"].asString();
             }
         } else if (cmd == "ConnectionRefused") {
+            std::string error = root[i]["errors"][0].asString();
+            if (error == "InvalidSlot")
+                refused = AP_ErrorType::InvalidSlot;
+            else if (error == "InvalidGame")
+                refused = AP_ErrorType::InvalidGame;
+            else if (error == "IncompatibleVersion")
+                refused = AP_ErrorType::IncompatibleVersion;
+            else if (error == "InvalidPassword")
+                refused = AP_ErrorType::InvalidPassword;
+            else if (error == "InvalidItemsHandling")
+                refused = AP_ErrorType::InvalidItemsHandling;
+            else
+                refused = AP_ErrorType::UnknownError;
             auth = false;
-            refused = true;
             printf("AP: Archipelago Server has refused connection. Check Password / Name / IP and restart the Game.\n");
             fflush(stdout);
         } else if (cmd == "Bounced") {
@@ -1118,7 +1135,7 @@ void parseDataPkg(Json::Value new_datapkg) {
     if (datapkg_outdated_games.empty()){
         auth = true;
         ssl_success = auth && isSSL;
-        refused = false;
+        refused = AP_ErrorType::None;
     }
 }
 

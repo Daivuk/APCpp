@@ -7,11 +7,17 @@
 #include <set>
 #include <functional>
 
+enum struct AP_ErrorType {
+    None, MaxRetriesExceeded, InvalidSlot, InvalidGame, IncompatibleVersion, InvalidPassword, InvalidItemsHandling, UnknownError
+};
+
 void AP_Init(const char*, const char*, const char*, const char*);
 void AP_Init(const char*);
 bool AP_IsInit();
 
 void AP_Start();
+
+AP_ErrorType AP_GetErrorType();
 
 // AP_Shutdown resets the library state to before initialization, and doesn't just disconnect!
 void AP_Shutdown();
