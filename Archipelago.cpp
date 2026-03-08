@@ -596,6 +596,15 @@ void AP_BulkSetServerData(AP_SetServerDataRequest* request) {
             break;
     }
     req_t["want_reply"] = request->want_reply;
+    req_t["uuid"] = std::to_string(AP_GetUUID());
+
+    if (!request->extra_data.empty())
+    {
+        Json::Value extra_json;
+        reader.parse(request->extra_data, extra_json);
+        req_t["data"] = extra_json;
+    }
+
     map_serverdata_typemanage[request->key] = request->type;
 
     queue_server_data.push({req_t,&request->status});
@@ -926,6 +935,12 @@ bool parse_response(std::string msg, std::string &request) {
                 std::string raw_orig_val;
                 AP_SetReply setreply;
                 setreply.key = root[i]["key"].asString();
+                setreply.slot = root[i]["slot"].asInt();
+                setreply.uuid = root[i].get("uuid", "").asString();
+
+                if (!root[i]["data"].isNull())
+                    setreply.extra_data = writer.write(root[i]["data"]);
+
                 switch (map_serverdata_typemanage[setreply.key]) {
                     case AP_DataType::Int:
                         int_val = root[i]["value"].asInt();

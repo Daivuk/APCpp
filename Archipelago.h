@@ -200,12 +200,18 @@ struct AP_SetServerDataRequest {
     void* default_value = nullptr;
     AP_DataType type;
     bool want_reply;
+
+    std::string extra_data; // Additional valid JSON data, the server will send it in the SetReply
 };
 
 struct AP_SetReply {
     std::string key;
     void* original_value;
     void* value;
+
+    int slot;
+    std::string uuid;
+    std::string extra_data; // Additional valid JSON data sent in the Set packet
 };
 
 struct AP_Bounce {
