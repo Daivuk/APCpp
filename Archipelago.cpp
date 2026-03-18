@@ -20,6 +20,7 @@
 #include <functional>
 #include <utility>
 #include <vector>
+#include <algorithm>
 #include <filesystem>
 
 extern const int AP_OFFLINE_SLOT = 1404;
@@ -1143,7 +1144,7 @@ void parseDataPkg(const std::string& game, Json::Value& package)
 }
 
 bool loadDataPkg(const std::string& game, const std::string& hash) {
-    std::string cache_path = getDataPkgCachePath(game, hash);
+    std::filesystem::path cache_path = getDataPkgCachePath(game, hash);
     std::ifstream cache_file(cache_path);
     if (!cache_file.is_open())
         return false;
@@ -1161,10 +1162,10 @@ bool loadDataPkg(const std::string& game, const std::string& hash) {
 void cacheDataPkgs(Json::Value& serverPkgs) {
     for (std::string& game : serverPkgs["games"].getMemberNames()) {
         std::string hash = serverPkgs["games"][game]["checksum"].asString();
-        std::string cache_path = getDataPkgCachePath(game, hash);
+        std::filesystem::path cache_path = getDataPkgCachePath(game, hash);
 
         parseDataPkg(game, serverPkgs["games"][game]);
-        WriteFileJSON(serverPkgs["games"][game], cache_path);
+        WriteFileJSON(serverPkgs["games"][game], cache_path.string());
 
         datapkg_outdated_games.erase(game);
         printf("AP: Game Cache updated for %s\n", game.c_str());
