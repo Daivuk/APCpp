@@ -836,8 +836,10 @@ bool parse_response(std::string msg, std::string &request) {
                     }
                     map_slotdata_callback_mapintint[key](out);
                 } else {
+#if 0 // We don't want to warn over the presence of data meant for trackers.
                     if (key != "death_link" && key != "death_link_amnesty" && key != "DeathLink" && key != "DeathLink_Amnesty")
                         printf("AP: Warning: Unmapped slot data with key \"%s\"!\n", key.c_str());
+#endif
                 }
             }
 
