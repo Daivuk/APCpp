@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <queue>
 #include <random>
 #include <fstream>
@@ -102,7 +103,6 @@ std::queue<std::pair<Json::Value,AP_RequestStatus*>> queue_server_data;
 std::map<std::string, std::function<void(int)>> map_slotdata_callback_int;
 std::map<std::string, std::function<void(std::string)>> map_slotdata_callback_raw;
 std::map<std::string, std::function<void(std::map<int,int>)>> map_slotdata_callback_mapintint;
-std::vector<std::string> slotdata_strings;
 
 // Datapackage Stuff
 std::filesystem::path datapkg_cache_dir = std::filesystem::current_path() / ".datapkg-cache";
@@ -304,7 +304,6 @@ void AP_Shutdown() {
     map_slotdata_callback_int.clear();
     map_slotdata_callback_raw.clear();
     map_slotdata_callback_mapintint.clear();
-    slotdata_strings.clear();
     sp_ap_root = Json::objectValue;
 }
 
@@ -426,10 +425,11 @@ void AP_DeathLinkSend(const std::string &cause) {
     if (!cause.empty())
     {
         std::string cause_pname = cause;
-        size_t pname_marker = cause_pname.find("%YOU%");
+        constexpr std::string_view pname_you{"%YOU%"};
+        size_t pname_marker = cause_pname.find(pname_you);
 
         if (pname_marker != std::string::npos)
-            cause_pname.replace(pname_marker, 5, ap_player_name);
+            cause_pname.replace(pname_marker, pname_you.size(), ap_player_name);
         v["cause"] = cause_pname;
     }
     b.data = writer.write(v);
@@ -438,10 +438,6 @@ void AP_DeathLinkSend(const std::string &cause) {
     std::vector<std::string> tags = {std::string("DeathLink")};
     b.tags = &tags;
     AP_SendBounce(b);
-}
-
-void AP_DeathLinkSend() {
-    AP_DeathLinkSend("");
 }
 
 void AP_EnableQueueItemRecvMsgs(bool b) {
@@ -473,17 +469,14 @@ void AP_SetDeathLinkRecvCallback(std::function<void(std::string, std::string)> f
 
 void AP_RegisterSlotDataIntCallback(std::string key, std::function<void(int)> f_slotdata) {
     map_slotdata_callback_int[key] = f_slotdata;
-    slotdata_strings.push_back(key);
 }
 
 void AP_RegisterSlotDataRawCallback(std::string key, std::function<void(std::string)> f_slotdata) {
     map_slotdata_callback_raw[key] = f_slotdata;
-    slotdata_strings.push_back(key);
 }
 
 void AP_RegisterSlotDataMapIntIntCallback(std::string key, std::function<void(std::map<int,int>)> f_slotdata) {
     map_slotdata_callback_mapintint[key] = f_slotdata;
-    slotdata_strings.push_back(key);
 }
 
 void AP_SetDeathLinkSupported(bool supdeathlink) {
@@ -830,17 +823,21 @@ bool parse_response(std::string msg, std::string &request) {
             else if (root[i]["slot_data"]["DeathLink_Amnesty"] != Json::nullValue)
                 deathlink_amnesty = root[i]["slot_data"].get("DeathLink_Amnesty", 0).asInt();
             cur_deathlink_amnesty = deathlink_amnesty;
-            for (std::string key : slotdata_strings) {
+            for (auto slot_itr = root[i]["slot_data"].begin(); slot_itr != root[i]["slot_data"].end(); ++slot_itr) {
+                std::string key = slot_itr.key().asString();
                 if (map_slotdata_callback_int.count(key)) {
-                    map_slotdata_callback_int.at(key)(root[i]["slot_data"][key].asInt());
+                    map_slotdata_callback_int[key](slot_itr->asInt());
                 } else if (map_slotdata_callback_raw.count(key)) {
-                    map_slotdata_callback_raw.at(key)(writer.write(root[i]["slot_data"][key]));
+                    map_slotdata_callback_raw[key](writer.write(*slot_itr));
                 } else if (map_slotdata_callback_mapintint.count(key)) {
                     std::map<int,int> out;
-                    for (auto itr : root[i]["slot_data"][key].getMemberNames()) {
-                        out[std::stoi(itr)] = root[i]["slot_data"][key][itr.c_str()].asInt();
+                    for (auto map_idx_itr : slot_itr->getMemberNames()) {
+                        out[std::stoi(map_idx_itr)] = (*slot_itr)[map_idx_itr].asInt();
                     }
-                    map_slotdata_callback_mapintint.at(key)(out);
+                    map_slotdata_callback_mapintint[key](out);
+                } else {
+                    if (key != "death_link" && key != "death_link_amnesty" && key != "DeathLink" && key != "DeathLink_Amnesty")
+                        printf("AP: Warning: Unmapped slot data with key \"%s\"!\n", key.c_str());
                 }
             }
 
@@ -859,7 +856,6 @@ bool parse_response(std::string msg, std::string &request) {
 
             for (auto &game_pkg : lib_room_info.datapackage_checksums) {
                 if (!loadDataPkg(game_pkg.first, game_pkg.second)) {
-                    // printf("AP: Cache outdated for game: %s\n", game_pkg.first.c_str());
                     datapkg_outdated_games.insert(game_pkg.first);
                 }
             }
@@ -1125,10 +1121,9 @@ std::filesystem::path getDataPkgCachePath(const std::string& game, const std::st
 {
     std::string alphanum_game, alphanum_hash;
 
-    std::copy_if(game.begin(), game.end(), std::back_inserter(alphanum_game), 
-        [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'); });
-    std::copy_if(hash.begin(), hash.end(), std::back_inserter(alphanum_hash), 
-        [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'); });
+    auto alphanum_func = [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'); };
+    std::copy_if(game.begin(), game.end(), std::back_inserter(alphanum_game), alphanum_func);
+    std::copy_if(hash.begin(), hash.end(), std::back_inserter(alphanum_hash), alphanum_func);
 
     return datapkg_cache_dir / (alphanum_game + "-" + alphanum_hash + ".json");
 }
@@ -1146,8 +1141,7 @@ void parseDataPkg(const std::string& game, Json::Value& package)
 bool loadDataPkg(const std::string& game, const std::string& hash) {
     std::filesystem::path cache_path = getDataPkgCachePath(game, hash);
     std::ifstream cache_file(cache_path);
-    if (!cache_file.is_open())
-        return false;
+    if (!cache_file.is_open()) return false;
     try {
         Json::Value datapkg;
         reader.parse(cache_file, datapkg);
@@ -1175,8 +1169,7 @@ void cacheDataPkgs(Json::Value& serverPkgs) {
 Json::Value getDataPkgRequest(void) {
     Json::Value server_req;
 
-    const int num_outdated = datapkg_outdated_games.size();
-    if (!num_outdated) {
+    if (datapkg_outdated_games.empty()) {
         server_req["cmd"] = "Sync";
 
         auth = true;
@@ -1186,13 +1179,13 @@ Json::Value getDataPkgRequest(void) {
     else {
         // Fetch multiple games from the server at once to take advantage of compression.
         // Fetch up to 3 games at a time. Except if exactly 4 are left; then do 2 and 2 instead.
-        int num_to_fetch = (num_outdated == 4 ? 2 : (num_outdated > 3 ? 3 : num_outdated));
+        int num_to_fetch = (datapkg_outdated_games.size() == 4 ? 2 : (std::min)(3, (int)datapkg_outdated_games.size()));
 
         server_req["cmd"] = "GetDataPackage";
         server_req["games"] = Json::arrayValue;
         for (const std::string& game : datapkg_outdated_games) {
             server_req["games"].append(game);
-            if (!(--num_to_fetch))
+            if (!(--num_to_fetch > 0))
                 break;
         }
     }

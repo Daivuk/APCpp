@@ -94,8 +94,7 @@ void AP_StoryComplete();
 
 bool AP_DeathLinkPending();
 void AP_DeathLinkClear();
-void AP_DeathLinkSend();
-void AP_DeathLinkSend(const std::string &cause);
+void AP_DeathLinkSend(const std::string &cause = "");
 bool AP_DeathLinkEnabled();
 
 /* Message Management Types */
@@ -277,7 +276,7 @@ struct AP_GiftTrait {
 struct AP_Gift {
     std::string ID;
     std::string ItemName;
-    size_t Amount;
+    uint64_t Amount;
     uint64_t ItemValue;
     std::vector<AP_GiftTrait> Traits;
     std::string Sender;
